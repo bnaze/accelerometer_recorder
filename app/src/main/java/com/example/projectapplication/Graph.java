@@ -10,24 +10,17 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
-import android.widget.Button;
-import android.widget.Toast;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
-
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class Graph extends AppCompatActivity implements SensorEventListener {
 
@@ -37,15 +30,38 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
     private Sensor sensor;
     private int time;
 
-    String fileName = "datasample.txt";
+    private boolean checkSensor = false;
+    private Timer timer;
+    private TimerTask timerTask;
+    private Date date;
 
-    public Graph() throws IOException {
-    }
+    private String fileRoot;
+    private File dataFileDir;
+    private File dataFile;
+    private BufferedWriter writer;
+
+    private String fileName = "datasample.txt";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_graph);
+
+        fileRoot = Environment.getExternalStorageDirectory().toString();
+        dataFileDir = new File(fileRoot);
+        dataFile = new File(dataFileDir, fileName);
+
+        date = new Date();
+        timer = new Timer();
+        timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                checkSensor = true;
+            }
+        };
+
+        //Change time to get sensor readings
+        timer.schedule(timerTask,0,500);
 
         graph = findViewById(R.id.graph);
         series = new LineGraphSeries<>();
@@ -60,38 +76,31 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
         sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
-
     @Override
     public void onSensorChanged(SensorEvent event) {
-        time++;
-        try {
-            DataPoint newData = new DataPoint(time, event.values[1]);
-            series.appendData(newData, true, 40);
+        if (checkSensor) {
+            checkSensor = false;
+            time++;
+            try {
+                DataPoint newData = new DataPoint(time, event.values[1]);
+                series.appendData(newData, true, 40);
+            } catch (Exception e) {
+                Log.d("Exception1", e.getMessage());
+            }
+
+            //FileOutputStream fos = null;
+            String entry = event.values[0] + "," + event.values[1] + "," + event.values[2] + "," + System.currentTimeMillis();
+
+            try {
+                writer = new BufferedWriter(new FileWriter(dataFile, true));
+                writer.write(entry);
+                writer.newLine();
+                writer.close();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
-        catch(Exception e){
-            Log.d("Exception1",e.getMessage());
-        }
-
-        //FileOutputStream fos = null;
-        String entry = event.values[0] + "," + event.values[1] + "," + event.values[2] + "," + event.timestamp;
-
-        String root = Environment.getExternalStorageDirectory().toString();
-        File myDir = new File(root);
-
-        File file = new File (myDir, fileName);
-        if (file.exists ())
-            file.delete ();
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            out.write(entry.getBytes());
-            out.write("\n".getBytes());
-            out.flush();
-            out.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
     }
 
     @Override
