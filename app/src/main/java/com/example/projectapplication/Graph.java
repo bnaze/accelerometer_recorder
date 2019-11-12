@@ -30,7 +30,7 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
     private Sensor sensor;
     private int time;
 
-    private boolean checkSensor = false;
+    private boolean checkSensor = true;
     private Timer timer;
     private TimerTask timerTask;
     private Date date;
@@ -39,6 +39,11 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
     private File dataFileDir;
     private File dataFile;
     private BufferedWriter writer;
+
+    private float dx = 0;
+    private float dy = 0;
+    private float dz = 0;
+
 
     private String fileName = "datasample.txt";
 
@@ -61,7 +66,7 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
         };
 
         //Change time to get sensor readings
-        timer.schedule(timerTask,0,500);
+//        timer.schedule(timerTask,0,0);
 
         graph = findViewById(R.id.graph);
         series = new LineGraphSeries<>();
@@ -73,16 +78,27 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (checkSensor) {
-            checkSensor = false;
+            //checkSensor = false;
             time++;
+
+            if(event.values[0] < 0){
+                dx = event.values[0];
+            }
+            else if(event.values[1] < 0){
+                dy = event.values[1];
+            }
+            else if(event.values[2] < 0){
+                dz = event.values[2];
+            }
+
             try {
-                DataPoint newData = new DataPoint(time, event.values[1]);
+                DataPoint newData = new DataPoint(time, event.values[0]+dx);
                 series.appendData(newData, true, 40);
             } catch (Exception e) {
                 Log.d("Exception1", e.getMessage());
@@ -101,7 +117,11 @@ public class Graph extends AppCompatActivity implements SensorEventListener {
                 e.printStackTrace();
             }
         }
+
     }
+
+
+
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
